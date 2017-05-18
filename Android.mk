@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+ifeq ($(BOARD_USES_GENERIC_AUDIO), false)
 ifeq ($(INTEL_AUDIO_HAL),audio)
 
 LOCAL_PATH := $(call my-dir)
@@ -47,3 +48,4 @@ LOCAL_MODULE_TAGS := optional
 include $(BUILD_SHARED_LIBRARY)
 
 endif # INTEL_AUDIO_HAL
+endif # BOARD_USES_GENERIC_AUDIO
