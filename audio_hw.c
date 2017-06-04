@@ -843,6 +843,8 @@ static int adev_open(const hw_module_t* module, const char* name,
     int ret;
     int card = 0;
     char mixer_path[PATH_MAX];
+    int retry_num;
+    struct mixer *mixer;
 
     if (strcmp(name, AUDIO_HARDWARE_INTERFACE) != 0)
         return -EINVAL;
@@ -872,6 +874,32 @@ static int adev_open(const hw_module_t* module, const char* name,
     adev->hw_device.open_input_stream = adev_open_input_stream;
     adev->hw_device.close_input_stream = adev_close_input_stream;
     adev->hw_device.dump = adev_dump;
+
+    /*
+     * there is no way to garantee that a card is available immediately
+     * due to asynchronous inits in the kernel and no init completion
+     * info reaching userspace, hence we loop for up to 200ms (10*20)
+     */
+#define RETRY_NUMBER 10
+#define RETRY_US     20000
+
+    retry_num = 0;
+    do {
+	mixer = mixer_open(card);
+	if (mixer == NULL) {
+	    if (++retry_num > RETRY_NUMBER) {
+		ALOGE("%s unable to open the mixer for--card %d, aborting.",
+		      __func__, card);
+		goto error;
+	    }
+	    usleep(RETRY_US);
+	}
+    } while (mixer == NULL);
+
+    if (retry_num > 0) {
+	ALOGE("%s mixers only available after %d retries",
+	      __func__, retry_num);
+    }
 
     sprintf(mixer_path, "/system/etc/mixer_paths_%d.xml", card);
     adev->ar = audio_route_init(card, mixer_path);
